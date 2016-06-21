@@ -1,0 +1,2 @@
+# We don't want to ignore
+!firmware_bin/WCNSS_qcom_wlan_nv.bin
