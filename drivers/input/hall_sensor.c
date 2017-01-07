@@ -29,6 +29,8 @@
 #define	LID_DEV_NAME	"hall_sensor"
 #define HALL_INPUT	"/dev/input/hall_dev"
 
+static struct kobject *android_hall_kobj;
+
 struct hall_data {
 	int gpio;	/* device use gpio number */
 	int irq;	/* device request irq number */
@@ -49,15 +51,40 @@ static irqreturn_t hall_interrupt_handler(int irq, void *dev)
 		data->active_low;
 	if (value) {
 		input_report_switch(data->hall_dev, SW_LID, 0);
+		pr_err("lifeng far\n");
 		dev_dbg(&data->hall_dev->dev, "far\n");
 	} else {
 		input_report_switch(data->hall_dev, SW_LID, 1);
+		pr_err("lifeng near\n");
 		dev_dbg(&data->hall_dev->dev, "near\n");
 	}
 	input_sync(data->hall_dev);
 
 	return IRQ_HANDLED;
 }
+
+static ssize_t show_chipinfo(struct device *dev,struct device_attribute *attr,char *buf)
+{
+	ssize_t ret;
+	ret = sprintf(buf,"IC:OCH175VAD,vendor:Unique Semi\n");
+	return ret;
+}
+static DEVICE_ATTR(info,0444,show_chipinfo,NULL);
+/**
+* Sysfs attr info2
+*/
+static struct attribute *hall_info_attrs[] = {
+	&dev_attr_info.attr,
+	NULL,
+};
+
+/**
+* Sysfs attr group info2
+*/
+static const struct attribute_group hall_info_attr_group[] = {
+    {.attrs = hall_info_attrs},
+};
+
 
 static int hall_input_init(struct platform_device *pdev,
 		struct hall_data *data)
@@ -200,6 +227,7 @@ static int hall_driver_probe(struct platform_device *dev)
 	int irq_flags;
 
 	dev_dbg(&dev->dev, "hall_driver probe\n");
+	pr_err("lifeng probe begin\n");
 	data = devm_kzalloc(&dev->dev, sizeof(struct hall_data), GFP_KERNEL);
 	if (data == NULL) {
 		err = -ENOMEM;
@@ -250,6 +278,20 @@ static int hall_driver_probe(struct platform_device *dev)
 		dev_err(&dev->dev, "request irq failed : %d\n", data->irq);
 		goto free_gpio;
 	}
+    android_hall_kobj = kobject_create_and_add("android_hall", NULL);
+    if (android_hall_kobj != NULL)
+    {
+	    err = sysfs_create_group(android_hall_kobj, hall_info_attr_group);
+	    if (err < 0)
+        {
+            printk(KERN_ERR "%s: hall sysfs_create_group failed\n",__func__);
+		    goto free_hall_obj;
+        }
+    }
+	else
+	{
+		printk(KERN_ERR "%s: kobject_create_and_add failed\n", __func__);;
+	}
 
 	device_init_wakeup(&dev->dev, data->wakeup);
 	enable_irq_wake(data->irq);
@@ -266,6 +308,8 @@ static int hall_driver_probe(struct platform_device *dev)
 		goto err_regulator_init;
 	}
 
+	pr_err("lifeng probe end\n");
+
 	return 0;
 
 err_regulator_init:
@@ -273,6 +317,8 @@ err_regulator_init:
 free_irq:
 	disable_irq_wake(data->irq);
 	device_init_wakeup(&dev->dev, 0);
+free_hall_obj:
+	kobject_put(android_hall_kobj);
 free_gpio:
 	gpio_free(data->gpio);
 exit:
@@ -289,6 +335,11 @@ static int hall_driver_remove(struct platform_device *dev)
 		gpio_free(data->gpio);
 	hall_set_regulator(dev, false);
 	hall_config_regulator(dev, false);
+	if(android_hall_kobj)
+	{
+	     sysfs_remove_group(android_hall_kobj,hall_info_attr_group);
+		 kobject_put(android_hall_kobj);
+	}
 
 	return 0;
 }
