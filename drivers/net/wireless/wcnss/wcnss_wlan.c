@@ -46,6 +46,7 @@
 #define CTRL_DEVICE "wcnss_ctrl"
 #define VERSION "1.01"
 #define WCNSS_PIL_DEVICE "wcnss"
+#define WCNSS_MODULE_NAME "wcn3615"
 
 #define WCNSS_PINCTRL_STATE_DEFAULT "wcnss_default"
 #define WCNSS_PINCTRL_STATE_SLEEP "wcnss_sleep"
@@ -494,6 +495,17 @@ static ssize_t wcnss_serial_number_store(struct device *dev,
 static DEVICE_ATTR(serial_number, S_IRUSR | S_IWUSR,
 	wcnss_serial_number_show, wcnss_serial_number_store);
 
+
+static ssize_t wcnss_name_show(struct device *dev,
+				struct device_attribute *attr, char *buf)
+{
+	if (!penv)
+		return -ENODEV;
+
+	return scnprintf(buf, PAGE_SIZE, "%s\n", WCNSS_MODULE_NAME);
+}
+
+static DEVICE_ATTR(wcnss_name, 0644,wcnss_name_show, NULL);
 
 static ssize_t wcnss_thermal_mitigation_show(struct device *dev,
 				struct device_attribute *attr, char *buf)
@@ -1173,6 +1185,10 @@ static int wcnss_create_sysfs(struct device *dev)
 	if (ret)
 		goto remove_serial;
 
+	ret = device_create_file(dev, &dev_attr_wcnss_name);
+	if (ret)
+		goto remove_name;
+
 	ret = device_create_file(dev, &dev_attr_wcnss_version);
 	if (ret)
 		goto remove_thermal;
@@ -1187,6 +1203,8 @@ remove_version:
 	device_remove_file(dev, &dev_attr_wcnss_version);
 remove_thermal:
 	device_remove_file(dev, &dev_attr_thermal_mitigation);
+remove_name:
+	device_remove_file(dev, &dev_attr_wcnss_name);
 remove_serial:
 	device_remove_file(dev, &dev_attr_serial_number);
 
@@ -1197,6 +1215,7 @@ static void wcnss_remove_sysfs(struct device *dev)
 {
 	if (dev) {
 		device_remove_file(dev, &dev_attr_serial_number);
+		device_remove_file(dev, &dev_attr_wcnss_name);
 		device_remove_file(dev, &dev_attr_thermal_mitigation);
 		device_remove_file(dev, &dev_attr_wcnss_version);
 		device_remove_file(dev, &dev_attr_wcnss_mac_addr);
