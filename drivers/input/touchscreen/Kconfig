@@ -1170,4 +1170,6 @@ config TOUCHSCREEN_MSG5846_FOR_CHAOZULITE
 
 	  If unsure, say N.
 
+source "drivers/input/touchscreen/melfas_mip4/Kconfig"
+
 endif
