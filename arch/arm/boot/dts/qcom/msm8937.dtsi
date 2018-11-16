@@ -114,6 +114,11 @@
 			reg = <0x0 0x90000000 0x0 0x1400000>;
 		};
 
+		ramoops_mem: ramoops_mem_region {
+			no-map;
+			reg = <0x0 0xae000000 0x0 0x80000>;
+			label = "ramoops_mem";
+		};
 	};
 
 	aliases {
@@ -1968,6 +1973,18 @@
 		compatible = "qcom,msm-ssc-sensors";
 	};
 
+	ramoops {
+		compatible = "ramoops";
+		status = "ok";
+
+		android,ramoops-buffer-start = <0xae000000>;
+		android,ramoops-buffer-size = <0x80000>;
+		android,ramoops-console-size = <0x40000>;
+		android,ramoops-record-size = <0x3F800>;
+		android,ramoops-annotate-size = <0x800>;
+		android,ramoops-dump-oops = <0x1>;
+		linux,contiguous-region = <&ramoops_mem>;
+	};
 };
 
 #include "msm-pm8937-rpm-regulator.dtsi"
